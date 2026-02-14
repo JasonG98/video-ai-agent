@@ -14,6 +14,16 @@ docker compose up -d --build
 cp .env.example .env
 ```
 
+## WebUI
+- 启动后访问 `http://localhost:8000/`
+- 页面内可直接完成：上传视频 -> 触发分析 -> 获取分析结果 -> 触发改编 -> 查询改编结果
+- API 文档仍可通过 `http://localhost:8000/docs` 访问
+
+## 本地 `fastapi dev` 调试
+- 先启动依赖服务：`docker compose up -d db redis minio`
+- 再启动 API：`fastapi dev app/main.py`
+- 开发环境下（`APP_ENV=dev`）会自动把 `.env` 里的 `db/redis/minio` 主机名映射为 `127.0.0.1`
+
 ## 迁移数据库
 ```bash
 docker compose exec api alembic upgrade head

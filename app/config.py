@@ -1,6 +1,34 @@
 from functools import lru_cache
-from pydantic import Field
+from pathlib import Path
+from urllib.parse import urlparse, urlunparse
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _rewrite_service_host_to_localhost(url: str) -> str:
+    """将 docker-compose 服务名地址改写为本机地址，便于本地 fastapi dev 调试。"""
+    service_host_map = {
+        "db": "127.0.0.1",
+        "redis": "127.0.0.1",
+        "minio": "127.0.0.1",
+    }
+    parsed = urlparse(url)
+    host = parsed.hostname
+    if not host:
+        return url
+    mapped_host = service_host_map.get(host)
+    if not mapped_host:
+        return url
+
+    userinfo = ""
+    if parsed.username:
+        userinfo = parsed.username
+        if parsed.password is not None:
+            userinfo += f":{parsed.password}"
+        userinfo += "@"
+    port = f":{parsed.port}" if parsed.port else ""
+    new_netloc = f"{userinfo}{mapped_host}{port}"
+    return urlunparse(parsed._replace(netloc=new_netloc))
 
 
 class Settings(BaseSettings):
@@ -35,6 +63,19 @@ class Settings(BaseSettings):
     llm_provider: str = "mock"
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
+
+    @model_validator(mode="after")
+    def normalize_local_dev_hosts(self) -> "Settings":
+        """
+        在容器外本地开发时，自动把 compose 服务名地址映射到 localhost。
+        这样 `fastapi dev app/main.py` 也能直接复用 `.env`。
+        """
+        if self.app_env != "dev" or Path("/.dockerenv").exists():
+            return self
+        self.database_url = _rewrite_service_host_to_localhost(self.database_url)
+        self.redis_url = _rewrite_service_host_to_localhost(self.redis_url)
+        self.s3_endpoint = _rewrite_service_host_to_localhost(self.s3_endpoint)
+        return self
 
     @property
     def effective_celery_broker(self) -> str:

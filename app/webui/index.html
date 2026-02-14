@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Video AI Agent WebUI</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --line: #d8e1ef;
+      --text: #11243d;
+      --subtext: #4a607d;
+      --primary: #0f5bd7;
+      --primary-strong: #0a4aad;
+      --ok: #1f8b4c;
+      --warn: #b36d00;
+      --err: #b42318;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #d6e5ff 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #dff4ea 0%, transparent 60%),
+        var(--bg);
+    }
+    .wrap {
+      max-width: 1080px;
+      margin: 28px auto 40px;
+      padding: 0 16px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      line-height: 1.2;
+      letter-spacing: 0.02em;
+    }
+    .hint {
+      margin: 0 0 24px;
+      color: var(--subtext);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(17, 36, 61, 0.04);
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+    .row {
+      margin-bottom: 10px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--subtext);
+      font-size: 13px;
+    }
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: var(--text);
+      background: #fff;
+    }
+    textarea {
+      min-height: 82px;
+      resize: vertical;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      color: #fff;
+      background: var(--primary);
+      transition: background .15s ease;
+    }
+    button:hover { background: var(--primary-strong); }
+    button.secondary {
+      background: #eef3ff;
+      color: #26426b;
+      border: 1px solid #cfdcfa;
+    }
+    pre {
+      margin: 12px 0 0;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #f9fbff;
+      max-height: 300px;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--subtext);
+    }
+    .status.ok { color: var(--ok); }
+    .status.warn { color: var(--warn); }
+    .status.err { color: var(--err); }
+    .full { grid-column: 1 / -1; }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>爆款视频 AI 复刻引擎</h1>
+    <p class="hint">流程：上传视频 -> 触发分析 -> 查看分析结果 -> 触发改编 -> 查看改编结果</p>
+
+    <div class="grid">
+      <section class="card">
+        <h2>1) 上传视频</h2>
+        <div class="row">
+          <label for="videoFile">视频文件</label>
+          <input id="videoFile" type="file" accept="video/*" />
+        </div>
+        <div class="actions">
+          <button id="uploadBtn">上传</button>
+        </div>
+        <div id="uploadStatus" class="status"></div>
+        <pre id="uploadOut"></pre>
+      </section>
+
+      <section class="card">
+        <h2>2) 触发分析</h2>
+        <div class="row">
+          <label for="analysisVideoId">Video ID</label>
+          <input id="analysisVideoId" type="number" placeholder="例如：1" />
+        </div>
+        <div class="actions">
+          <button id="runAnalysisBtn">触发分析</button>
+          <button id="checkAnalysisStatusBtn" class="secondary">查询分析状态</button>
+          <button id="getAnalysisResultBtn" class="secondary">获取分析结果</button>
+        </div>
+        <div id="analysisStatus" class="status"></div>
+        <pre id="analysisOut"></pre>
+      </section>
+
+      <section class="card">
+        <h2>3) 触发改编</h2>
+        <div class="row">
+          <label for="adaptAnalysisId">Analysis ID</label>
+          <input id="adaptAnalysisId" type="number" placeholder="例如：1" />
+        </div>
+        <div class="row">
+          <label for="category">类目 (category)</label>
+          <input id="category" placeholder="例如：美妆" />
+        </div>
+        <div class="row">
+          <label for="name">商品名 (name)</label>
+          <input id="name" placeholder="例如：轻透粉底液" />
+        </div>
+        <div class="row">
+          <label for="sellingPoints">卖点 (selling_points)</label>
+          <textarea id="sellingPoints" placeholder="每行一个，或用逗号分隔"></textarea>
+        </div>
+        <div class="row">
+          <label for="brandTone">品牌语气 (brand_tone)</label>
+          <input id="brandTone" placeholder="例如：专业可信" />
+        </div>
+        <div class="actions">
+          <button id="runAdaptBtn">触发改编</button>
+        </div>
+        <div id="adaptStatus" class="status"></div>
+        <pre id="adaptOut"></pre>
+      </section>
+
+      <section class="card">
+        <h2>4) 查询改编结果</h2>
+        <div class="row">
+          <label for="adaptationId">Adaptation ID</label>
+          <input id="adaptationId" type="number" placeholder="例如：1" />
+        </div>
+        <div class="actions">
+          <button id="getAdaptBtn">查询</button>
+        </div>
+        <div id="adaptGetStatus" class="status"></div>
+        <pre id="adaptGetOut"></pre>
+      </section>
+
+      <section class="card full">
+        <h2>运行日志</h2>
+        <pre id="logOut"></pre>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "/api/v1";
+    let analysisPollTimer = null;
+
+    const el = (id) => document.getElementById(id);
+    const now = () => new Date().toLocaleTimeString("zh-CN", { hour12: false });
+
+    function setStatus(id, text, level = "") {
+      const node = el(id);
+      node.textContent = text || "";
+      node.className = "status" + (level ? " " + level : "");
+    }
+
+    function pretty(value) {
+      return JSON.stringify(value, null, 2);
+    }
+
+    function writeOut(id, value) {
+      el(id).textContent = typeof value === "string" ? value : pretty(value);
+    }
+
+    function logLine(message) {
+      const node = el("logOut");
+      const prefix = "[" + now() + "] ";
+      node.textContent = prefix + message + "\n" + node.textContent;
+    }
+
+    async function requestJson(url, options = {}) {
+      const resp = await fetch(url, options);
+      const contentType = resp.headers.get("content-type") || "";
+      const body = contentType.includes("application/json") ? await resp.json() : await resp.text();
+      if (!resp.ok) {
+        const message = typeof body === "string" ? body : (body.detail || pretty(body));
+        throw new Error(message);
+      }
+      return body;
+    }
+
+    async function uploadVideo() {
+      const file = el("videoFile").files[0];
+      if (!file) {
+        setStatus("uploadStatus", "请选择视频文件。", "warn");
+        return;
+      }
+      try {
+        setStatus("uploadStatus", "上传中...", "warn");
+        const form = new FormData();
+        form.append("file", file);
+        const data = await requestJson(API_BASE + "/videos/upload", { method: "POST", body: form });
+        writeOut("uploadOut", data);
+        setStatus("uploadStatus", "上传成功。", "ok");
+        el("analysisVideoId").value = data.video_id;
+        logLine("上传成功，video_id=" + data.video_id);
+      } catch (err) {
+        setStatus("uploadStatus", "上传失败：" + err.message, "err");
+        logLine("上传失败: " + err.message);
+      }
+    }
+
+    async function runAnalysis() {
+      const videoId = Number(el("analysisVideoId").value);
+      if (!videoId) {
+        setStatus("analysisStatus", "请输入有效的 Video ID。", "warn");
+        return;
+      }
+      try {
+        setStatus("analysisStatus", "分析任务入队中...", "warn");
+        const data = await requestJson(API_BASE + "/analysis/" + videoId + "/run", { method: "POST" });
+        writeOut("analysisOut", data);
+        setStatus("analysisStatus", "任务已入队，开始轮询状态。", "ok");
+        el("adaptAnalysisId").value = data.analysis_id;
+        logLine("分析任务已创建，analysis_id=" + data.analysis_id);
+        startAnalysisPolling(data.analysis_id);
+      } catch (err) {
+        setStatus("analysisStatus", "触发分析失败：" + err.message, "err");
+        logLine("触发分析失败: " + err.message);
+      }
+    }
+
+    async function checkAnalysisStatus() {
+      const analysisId = Number(el("adaptAnalysisId").value || extractIdFromOut("analysisOut"));
+      if (!analysisId) {
+        setStatus("analysisStatus", "请输入 Analysis ID（可直接填在改编区块里）。", "warn");
+        return;
+      }
+      try {
+        const data = await requestJson(API_BASE + "/analysis/" + analysisId + "/status");
+        writeOut("analysisOut", data);
+        const level = data.status === "succeeded" ? "ok" : (data.status === "failed" ? "err" : "warn");
+        setStatus("analysisStatus", "状态：" + data.status + "，进度：" + data.progress + "%", level);
+        logLine("分析状态 analysis_id=" + analysisId + " -> " + data.status + " (" + data.progress + "%)");
+        return data;
+      } catch (err) {
+        setStatus("analysisStatus", "查询状态失败：" + err.message, "err");
+        logLine("查询分析状态失败: " + err.message);
+        return null;
+      }
+    }
+
+    async function getAnalysisResult() {
+      const analysisId = Number(el("adaptAnalysisId").value || extractIdFromOut("analysisOut"));
+      if (!analysisId) {
+        setStatus("analysisStatus", "请输入 Analysis ID。", "warn");
+        return;
+      }
+      try {
+        const data = await requestJson(API_BASE + "/analysis/" + analysisId + "/result");
+        writeOut("analysisOut", data);
+        setStatus("analysisStatus", "分析结果获取成功。", "ok");
+        logLine("分析结果获取成功，analysis_id=" + analysisId);
+      } catch (err) {
+        setStatus("analysisStatus", "获取结果失败：" + err.message, "err");
+        logLine("获取分析结果失败: " + err.message);
+      }
+    }
+
+    function parseSellingPoints(raw) {
+      return raw
+        .split(/[\n,，]/g)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    async function runAdaptation() {
+      const analysisId = Number(el("adaptAnalysisId").value);
+      const payload = {
+        category: el("category").value.trim(),
+        name: el("name").value.trim(),
+        selling_points: parseSellingPoints(el("sellingPoints").value),
+        brand_tone: el("brandTone").value.trim()
+      };
+
+      if (!analysisId || !payload.category || !payload.name || !payload.brand_tone) {
+        setStatus("adaptStatus", "请填写 Analysis ID、类目、商品名、品牌语气。", "warn");
+        return;
+      }
+
+      try {
+        setStatus("adaptStatus", "改编任务入队中...", "warn");
+        const data = await requestJson(API_BASE + "/adaptation/" + analysisId + "/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        writeOut("adaptOut", data);
+        setStatus("adaptStatus", "改编任务已入队。", "ok");
+        el("adaptationId").value = data.adaptation_id;
+        logLine("改编任务已创建，adaptation_id=" + data.adaptation_id);
+      } catch (err) {
+        setStatus("adaptStatus", "触发改编失败：" + err.message, "err");
+        logLine("触发改编失败: " + err.message);
+      }
+    }
+
+    async function getAdaptation() {
+      const adaptationId = Number(el("adaptationId").value || extractIdFromOut("adaptOut"));
+      if (!adaptationId) {
+        setStatus("adaptGetStatus", "请输入 Adaptation ID。", "warn");
+        return;
+      }
+      try {
+        const data = await requestJson(API_BASE + "/adaptation/" + adaptationId);
+        writeOut("adaptGetOut", data);
+        const level = data.status === "succeeded" ? "ok" : (data.status === "failed" ? "err" : "warn");
+        setStatus("adaptGetStatus", "状态：" + data.status + "，进度：" + data.progress + "%", level);
+        logLine("改编状态 adaptation_id=" + adaptationId + " -> " + data.status + " (" + data.progress + "%)");
+      } catch (err) {
+        setStatus("adaptGetStatus", "查询改编失败：" + err.message, "err");
+        logLine("查询改编结果失败: " + err.message);
+      }
+    }
+
+    function extractIdFromOut(outId) {
+      try {
+        const txt = el(outId).textContent.trim();
+        if (!txt) return null;
+        const data = JSON.parse(txt);
+        return data.analysis_id || data.adaptation_id || null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function startAnalysisPolling(analysisId) {
+      if (analysisPollTimer) {
+        clearInterval(analysisPollTimer);
+      }
+      analysisPollTimer = setInterval(async () => {
+        const data = await checkAnalysisStatus();
+        if (!data) return;
+        if (data.status === "succeeded" || data.status === "failed") {
+          clearInterval(analysisPollTimer);
+          analysisPollTimer = null;
+          if (data.status === "succeeded") {
+            await getAnalysisResult();
+          }
+        }
+      }, 3000);
+      logLine("开始轮询 analysis_id=" + analysisId + "，间隔 3 秒");
+    }
+
+    el("uploadBtn").addEventListener("click", uploadVideo);
+    el("runAnalysisBtn").addEventListener("click", runAnalysis);
+    el("checkAnalysisStatusBtn").addEventListener("click", checkAnalysisStatus);
+    el("getAnalysisResultBtn").addEventListener("click", getAnalysisResult);
+    el("runAdaptBtn").addEventListener("click", runAdaptation);
+    el("getAdaptBtn").addEventListener("click", getAdaptation);
+    logLine("WebUI 已就绪。");
+  </script>
+</body>
+</html>
