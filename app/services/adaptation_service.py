@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.agent.controller import VideoAnalysisAgent
 from app.models.adaptation import Adaptation
 from app.models.analysis import Analysis
+from app.models.video import Video
 from app.schemas.adaptation import ProductInfo
 
 
@@ -34,6 +35,9 @@ class AdaptationService:
         analysis = self.db.get(Analysis, adaptation.analysis_id)
         if not analysis:
             raise ValueError("analysis not found")
+        video = self.db.get(Video, analysis.video_id)
+        if not video:
+            raise ValueError("video not found")
         try:
             adaptation.status = "processing"
             adaptation.progress = 20
@@ -41,7 +45,7 @@ class AdaptationService:
             self.db.commit()
 
             product_info = ProductInfo(**adaptation.product_info_json)
-            result = self.agent.analyze_and_adapt("cached_video_path", new_product_info=product_info)
+            result = self.agent.analyze_and_adapt(video.storage_key, new_product_info=product_info)
             adaptation.result_json = result.get("generation", {})
             adaptation.trace_json = result.get("trace", [])
             adaptation.status = "succeeded"

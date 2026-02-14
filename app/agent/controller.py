@@ -17,7 +17,13 @@ class VideoAnalysisAgent:
     def _trace(self, state: AgentState, phase: str, message: str, progress: int) -> None:
         state.progress = progress
         state.last_message = message
-        state.reasoning_trace.append({"timestamp": datetime.utcnow(), "phase": phase, "message": message})
+        state.reasoning_trace.append(
+            {
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "phase": phase,
+                "message": message,
+            }
+        )
 
     def analyze_and_adapt(self, video_path: str, new_product_info: ProductInfo | None = None) -> dict:
         """运行完整四层分析，并可选做改编。"""
